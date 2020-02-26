@@ -14,6 +14,7 @@ __Δραστηριότητα:__
 
 Υλικό:
 + [RapidMiner Studio Manual](https://docs.rapidminer.com/downloads/RapidMiner-v6-user-manual.pdf)
++ [Get Started with RapidMiner & Machine Learning](https://academy.rapidminer.com/learning-paths/get-started-with-rapidminer-and-machine-learning)
 
 __Δραστηριότητα:__
 
