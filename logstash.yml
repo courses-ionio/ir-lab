@@ -1,0 +1,13 @@
+version: '2.2'
+services:
+  ls01:
+    image: docker.elastic.co/logstash/logstash:7.12.0
+    container_name: ls01
+    volumes:
+      - ./data:/app
+    networks:
+      - elastic
+
+networks:
+  elastic:
+    driver: bridge

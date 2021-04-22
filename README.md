@@ -288,11 +288,89 @@ _Σημειώνουμε για αργότερα, τερματισμός με: `d
     }    
     ```
 
-Εγκαταστήστε στον υπολογιστή σας ένα πιο εύχρηστο [REST API client](https://www.postman.com/), πχ Postman και εκτελέστε ανάλογες εισαγωγές, τροποποιήσεις, διαγραφές. 
+Εγκαταστήστε στον υπολογιστή σας ένα πιο εύχρηστο [REST API client](https://www.postman.com/), πχ Postman και εκτελέστε ανάλογες εισαγωγές, τροποποιήσεις, διαγραφές.
+
+---
+
+Για την μαζική εισαγωγή εγγράφων στο elasticsearch node μας θα αξιοποιήσουμε το logstash.  
+Ξεκινάμε το elasticsearch node με χρήση του __docker-compose.yml__: `docker-compose up`.  
+Ξεκινάμε και το logstash με χρήση του __logstash.yml__: `docker-compose -f logstash.yml up`
+Το νέο yml αρχείο δημιουργεί και ένα logstash node:
+```
+ls01:
+    image: docker.elastic.co/logstash/logstash:7.12.0
+    container_name: ls01
+    volumes:
+    - ./data:/app
+    networks:
+      - elastic
+```
+Το ls01 μπορεί να επικοινωνήσει με το es01 καθώς και τα δύο χρησιμοποιούν το elastic network.  
+
+Με τη βοήθεια το logstash μπορούμε να εισάγουμε csv αρχεία στο elasticsearch node, πχ το `data/Wired.csv`.
+Για να πετύχουμε αυτό θα δημιουργήσουμε ένα κατάλληλο configuration αρχείο, το `Wired.conf`:
+```
+input {
+    file {
+        path => "/app/Wired.csv"
+        start_position => beginning
+    }
+}
+filter {
+    csv {
+        columns => [
+                "a_link",
+                "a_text"
+        ]
+        separator => ";"
+        }
+}
+output {
+    stdout
+    {
+        codec => rubydebug
+    }
+     elasticsearch {
+        action => "index"
+        hosts => ["es01:9200"]
+        index => "wired"
+    }
+}
+```
+
+Η εκτέλεση για την εισαγωγή του csv αρχείο γίνεται από γραμμή εντολών. Εκτελούμε λοιπόν:
+* Είσοδο στο logstash container: `docker exec -it ls01 /bin/bash`
+* Μετάβαση στο volume που περιέχει τα δεδομένα (`.csv` αρχείο) και το configuraion (`.conf` αρχείο): `cd /app`
+* Εκτέλεση εισαγωγής: `/usr/share/logstash/bin/logstash -f /app/Wired.conf --path.data /app/data`
+
+Ελέγχουμε εάν το νέο index δημιουργήθηκε σωστά: `curl -X GET "http://localhost:9200/_cat/indices?v"`  
+Μια επιτυχής εισαγωγή θα δείχνει (κάτι σαν):
+```
+health status index                           uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   wired                           pWt-upjHR4aFp_8we80oJA   1   1        108            0      115kb          115kb
+```
+
+Πλέον μπορούμε να κάνουμε αναζητήσεις μέσα σε αυτό το index.
+Πχ:
+* `curl -X GET "localhost:9200/_search?q=listen&pretty"`
+* `curl -X GET "localhost:9200/_search?q=and&pretty"`
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "match" : { "a_text" : "vacc" } }}' "localhost:9200/_search?pretty"`
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "prefix" : { "a_text" : "vacc" } }}' "localhost:9200/_search?pretty"`
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "bool" : { "must" : { "prefix" : { "a_text" : "vacc" } }, "must_not" : { "match" : { "a_text" : "Covid-19" } } } }}' "localhost:9200/_search?pretty"`
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "bool" : { "must" : { "prefix" : { "a_text" : "vacc" } }, "must_not" : { "prefix" : { "a_text" : "covid" } } } }}' "localhost:9200/_search?pretty"`
+ή ανάλογα παραδείγματα με χρήση Postman αντί για curl.
 
 
+Για ακόμη καλύτερη αναζήτηση μέσα στα δεδομένα μας.. αξιοποίηση __kibana__.  
+Σταματάμε το πρώτο docker-compose (αυτό με το __docker-compose.yml__) με `Ctrl+C`.  
+Κάνουμε uncomment τις γραμμές του kibana container και ξεκινάμε πάλι το docker compose. (Θα πάρει λίγο χρόνο _και χώρο_).
+
+
+Ανοίγουμε σε ένα browser: http://localhost:5601/ και εξερευνούμε το Discover interface.  
+Μπορούμε κάνουμε αναζητήσεις με λογικές πράξεις, match/prefix mode, ... και πολλά άλλα.
 
 ---
 Sources:  
 * https://www.elastic.co/guide/en/elastic-stack-get-started/current/get-started-docker.html
 * https://www.elastic.co/blog/a-practical-introduction-to-elasticsearch
+* https://www.compose.com/articles/how-scoring-works-in-elasticsearch/
