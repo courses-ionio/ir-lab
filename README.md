@@ -292,6 +292,8 @@ _Σημειώνουμε για αργότερα, τερματισμός με: `d
 
 ---
 
+## Setting up logstash and kibana on docker
+
 Για την μαζική εισαγωγή εγγράφων στο elasticsearch node μας θα αξιοποιήσουμε το logstash.  
 Ξεκινάμε το elasticsearch node με χρήση του __docker-compose.yml__: `docker-compose up`.  
 Ξεκινάμε και το logstash με χρήση του __logstash.yml__: `docker-compose -f logstash.yml up`
