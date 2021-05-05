@@ -372,6 +372,63 @@ yellow open   wired                           pWt-upjHR4aFp_8we80oJA   1   1    
 Μπορούμε κάνουμε αναζητήσεις με λογικές πράξεις, match/prefix mode, ... και πολλά άλλα.
 
 ---
+## _More data.. more fun!_
+
+Αξιοποιώντας πιο πλούσια δεδομένα μπορούμε να εκμεταλλευτούμε δυνατότητες aggregation και visualisation που μας παρέχουν τα elasticsearch και kibana.  
+* Εγγραφείτε στο https://data.gov.gr/token/. (_χρησιμοποιήστε το @ionio.gr e-mail σας_)
+* Μετά τη λήψη του κλειδιού σας κατεβάστε ένα dataset, πχ [δεδομένα εμβολιασμού](https://www.data.gov.gr/datasets/mdg_emvolio/) και αποθηκεύστε τα σε ένα αρχείο  
+`curl --request GET 'https://data.gov.gr/api/v1/query/mdg_emvolio?date_from=2021-04-26&date_to=2021-05-03' --header 'Authorization: Token 000000000000000000000000000000000' > Vaccinations.json`  
+_Αντί για `000..00` χρησιμοποιήστε το δικό σας token και επιλέξτε και τις ημερομηνίες που θέλετε._
+* Αξιοποιήστε το πιο κάτω conf αρχείο για να εισαγετε τα δεδομένα σας στο elasticsearch:
+```
+input {
+    file {
+        codec => json
+        path => "/app/Vaccinations.json"
+        start_position => beginning
+        sincedb_path => "/dev/null"
+    }
+}
+filter {
+    date {
+        match => [ "referencedate", "yyyy-MM-dd'T'HH:mm:ss"]
+        target => "@timestamp"
+    }
+}
+output {
+    stdout
+    {
+        codec => rubydebug { metadata => true }
+    }
+    elasticsearch {
+       action => "index"
+       hosts => ["es01:9200"]
+       index => "vaccinations"
+   }
+}
+```  
+με χρήση της εντολής: `/usr/share/logstash/bin/logstash -f /app/Vaccinations.conf --path.data /app/vacc`.  
+
+* Hints:
+    * Αν η εισαγωγή δεν.. γίνεται, διαγράψτε το φάκελο /app/vacc, προηγούμενες απόπειρες ίσως τη μπλοκάρουν.
+    * Το logstash και το kibana δε χρειάζεται να εκτελούνται ταυτόχρονα (αν έχετε ένα σύστημα με.. moderate resources ;-)  
+
+* Είσοδος στο kibana: http://localhost:5601/
+    * Για να αξιοποιήσει ένα index του elasticsearch το kibana χρειάζεται να ορίσει πρώτα ένα index pattern `Menu > Stack management > [Kibana] Index patterns`.
+        * Επιλογή `vaccinations` index
+        * Επιλογή time field (@timestamp)
+        * Σύνοψη ποια fields είναι searchable και aggregatable
+    * Αξιοποίηση Kibana Discover interface `Menu > [Analytics] Discover`.
+        * Αλλάξτε το time period από last 15 minutes σε ό,τι χρειάζεται για να βλέπετε τα δεδομένα που έχετε φορτώσει στο index.
+        * Από το μενού στα αριστερά επιλέξτε ποια fields θελετε να βλέπετε.
+        * Δοκιμάστε αναζητήσεις που σας ενδιαφέρουν
+    * Αξιοποίηση Kibana Dashboard interface `Menu > [Analytics] Dashboard`.
+        * Δημιουργήστε ένα νέο Lens panel το οποίο να αναπαριστά ως Line graph τις 10 περιοχές με τα περισσότερα εμβόλια ανά ημέρα:  
+        ![Vaccination line grapgh](./_img/vacc_lines.png)
+        * _εάν προσθέσετε νέα δεδομένα στο elasticsearch node το line graph ενημερώνεται αυτόματα_
+
+
+---
 Sources:  
 * https://www.elastic.co/guide/en/elastic-stack-get-started/current/get-started-docker.html
 * https://www.elastic.co/blog/a-practical-introduction-to-elasticsearch
