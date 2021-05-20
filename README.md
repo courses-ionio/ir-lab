@@ -429,7 +429,130 @@ output {
 
 
 ---
+## _Not just filtering; welcome aggregating_
+
+Εκτός από filtering (discovery και visualisation) των δεδομένων μας, μπορούμε να κάνουμε και ποικίλες πράξεις συνόλων (aggregations) πάνω στα δεδομένα, ανάλογα με αυτές που γνωρίζεται από την SQL.  
+
+Θα χρησιμιποιήσουμε ένα πιο πλούσιο dataset το οποίο έχουμε συλλέξει από τις πηγές RSS https://www.wired.com/feed/rss και https://www.wired.co.uk/feed/rss με τη βοήθεια του Knime.
+
+* Αξιοποιήστε το πιο κάτω conf αρχείο για να εισαγετε τα δεδομένα σας στο elasticsearch:
+```
+input {
+    file {
+        path => "/app/Wired.RSS.csv"
+        start_position => beginning
+    }
+}
+filter {
+    csv {
+        columns => [
+                "Source",
+                "Title",
+                "Published",
+                "Category",
+                "Sub_category",
+                "Creator",
+                "Subject",
+                "Keywords",
+                "Item_Url",
+                "Description"
+        ]
+        separator => ";"
+    }
+    date {
+        match => [ "Published", "yyyy-MM-dd'T'HH:mm", "yyyy-MM-dd'T'HH:mm:ss"]
+        target => "@timestamp"
+    }
+    mutate {
+        split => { "Keywords" => "," }
+    }
+    mutate {
+        strip => [ "Keywords", "Keywords" ]
+    }
+}
+output {
+    stdout
+    {
+        codec => rubydebug { metadata => true }
+    }
+    elasticsearch {
+       action => "index"
+       hosts => ["es01:9200"]
+       index => "wired"
+   }
+}
+```
+
+Πλέον μπορούμε να κάνουμε αναζητήσεις μέσα σε αυτό το index.  
+Ας ξεκινήσουμε απλά:
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "match": { "Title": "Covid" } } }' "localhost:9200/_search?pretty"`
+_όλα καλά;_
+Λίγο πιο σύνθετα (τίτλος και χρόνος δημοσίευσης):
+* `curl -X GET -H "Content-Type: application/json" --data '{ "query": { "bool":{ "must":[{ "match": { "Title": "Covid" } }, {"range":{ "@timestamp": {"gte": "now-15d/d", "lt": "now-10d/d"} } } ]} } }' "localhost:9200/_search?pretty"`
+
+
+Και συνεχίζουμε με aggregations:
+* _Επιτρέπουμε_ aggregations στο text field `Category`:  
+`curl -X PUT -H "Content-Type: application/json" --data '{ "properties": { "Category" : {"type":"text", "fielddata":true}} }' "localhost:9200/wired/_mapping?pretty"`
+* _Εκτελούμε_ ένα υπολογισμό πλήθους ανά κατηγορία:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Articles_by_categoty" : {"terms" : {"field":"Category"}}} }' "localhost:9200/wired/_search?pretty"`
+* _Εκτελέστε ανάλογο σύνολο ανά Keyword_
+
+Και aggregations σε πιο πολλά αριθμητικά δεδομένα:
+*  Εκτελούμε ένα υπολογισμό πλήθους ανά περιοχή εμβολιασμού:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Total_vaccination_days_by_area" : {"terms" : {"field":"area", "size":200}}} }' "localhost:9200/vaccinations/_search?pretty"`
+*  Εκτελούμε ένα υπολογισμό πλήθους και εμφωλευμένο υπολογισμό αθροίσματος ανά περιοχή εμβολιασμού:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Total_vaccinations_by_area" : {"terms" : {"field":"area", "size":200}, "aggs": {"Sum_per_area": {"sum":{"field":"daytotal"}}}}} }' "localhost:9200/vaccinations/_search?pretty"`
+
+Πιο περίπλοκα aggregations (πχ επί όρων με συγκεκριμένες ιδιότητες):
+* Εκτελούμε ένα υπολογισμό πλήθους ανά κατηγορία και ζητούμε μόνο τις κατηγορίες που έχουν τουλάχιστον **Ν** σχετιζόμενο documents:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Articles_by_categoty" : {"terms" : {"field":"Category", "min_doc_count": 5}}} }' "localhost:9200/wired/_search?pretty"`
+* Εκτελούμε ένα υπολογισμό πλήθους ανά κατηγορία και εμφωλευμένα ζητούμε σημαντικά keywords για καθεμία κατηγορία:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Category" : {"terms" : {"field":"Category"}, "aggs": {"Significant_keywords": {"significant_terms": {"field": "Keywords"}}}}} }' "localhost:9200/wired/_search?pretty"`  
+_Τί κάνει ένα keyword σημαντικό για μια συγκεκριμένη κατηγορία;_
+    * Μελετήστε το απόσπσμα της εξόδου:
+    ```
+    "Category" : {
+        ...
+        "Significant_keywords" : {
+        ...
+            "key" : "culture",
+            "doc_count" : 22,
+            "Significant_keywords" : {
+              "doc_count" : 22,
+              "bg_count" : 100,
+              "buckets" : [
+                {
+                  "key" : "games",
+                  "doc_count" : 5,
+                  "score" : 0.5106257378984651,
+                  "bg_count" : 7
+                },
+                ...
+    ```
+    Η συχνότητα εμφάνισης του keyword `games` σε όλα τα documents είναι:  
+    `buckets['games'].bg_count / Category[*].bg_count` = 7/100 = **7%**  
+    Η συχνότητα εμφάνισης του keyword `games` σε όλα τα documents που ανήκουν στην κατηγορία `culture` είναι:  
+    `buckets['games'].doc_count / Category['culture'].doc_count` = 5/22 = **23%**  
+    Αυτή η διαφορά κάνει το συγκεκριμένο keyword σημαντικό για τη συγκεκριμένη κατηγορία.
+    * Πειραματιστείτε με τη χρήση `min_doc_count` ώστε να περιορίσετε/χαλαρώσετε το κριτήριο των ελάχιστων απαιτούμενων σχετικών documents.
+* Η εκτέλεση ενός significant_terms aggregation σε ένα πεδίο ελέυθερου κειμένου (όχι keywords), ενδέχεται να φέρει πολλά χαμηλής ποιότητας αποτελέσματα:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Category" : {"terms" : {"field":"Category"}, "aggs": {"Significant_keywords": {"significant_terms": {"field": "Title"}}}}} }' "localhost:9200/wired/_search?pretty"`
+    * Μπορούμε να απαιτήσουμε κάθε significant keyword να εμφανίζεται σε ένα μέγιστο αριθμό documents:  
+    `curl -X GET -H "Content-Type: application/json" --data '{ "aggs": {"Category" : {"terms" : {"field":"Category"}, "aggs": {"Significant_keywords": {"significant_terms": {"field": "Title"}, "aggs":{ "rare_words": { "bucket_selector":{ "buckets_path":{ "doc_count": "_count"}, "script":{ "inline": "params.doc_count < 5"}}}}}}}} }' "localhost:9200/wired/_search?pretty"`  
+    _με τον κίνδυνο βέβαια να περικόψουμε κάποια αποτελέσματα._
+* Μπορούμε επίσης να χρησιμοποιήσουμε ένα significant_terms aggregator και για να προτείνουμε λέξεις που ίσως ταιριάζουν σε κάποια συγκεκριμένη είσοδο χρήση:  
+`curl -X GET -H "Content-Type: application/json" --data '{ "query": { "match": { "Title": "How" } }, "aggs":{"Significant_keywords": {"significant_terms": {"field": "Description", "min_doc_count":1}} } }' "localhost:9200/_search?pretty"`  
+    * Πειραματιστείτε με το `min_doc_count`
+
+
+
+---
 Sources:  
 * https://www.elastic.co/guide/en/elastic-stack-get-started/current/get-started-docker.html
 * https://www.elastic.co/blog/a-practical-introduction-to-elasticsearch
 * https://www.compose.com/articles/how-scoring-works-in-elasticsearch/
+* https://www.elastic.co/guide/en/logstash/current/plugins-filters-mutate.html
+* https://www.elastic.co/guide/en/elasticsearch/reference/7.x/search-aggregations-bucket-significantterms-aggregation.html
+* https://www.elastic.co/guide/en/elasticsearch/reference/master/search-aggregations-bucket-significanttext-aggregation.html
+* https://qbox.io/blog/a-deep-dive-into-significant-terms-and-significant-text-bucket-aggregations-in-elasticsearch/
