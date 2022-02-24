@@ -1,0 +1,6 @@
+{
+    "vaccinations":[
+        {"area":"ΑΙΤΩΛΟΑΚΑΡΝΑΝΙΑΣ","areaid":701,"dailydose1":540,"dailydose2":354,"daydiff":70,"daytotal":894,"referencedate":"2021-04-28T00:00:00","totaldistinctpersons":29831,"totaldose1":29831,"totaldose2":8622,"totalvaccinations":38453},
+        {"area":"ΑΝΑΤΟΛΙΚΗΣ ΑΤΤΙΚΗΣ","areaid":901,"dailydose1":1068,"dailydose2":608,"daydiff":-11,"daytotal":1676,"referencedate":"2021-04-28T00:00:00","totaldistinctpersons":56519,"totaldose1":56519,"totaldose2":20166,"totalvaccinations":76685}
+    ]
+}
