@@ -86,3 +86,5 @@ res = (term1 & ~term2)
 print(res)
 ```  
 δίνει αποτέλεσμα: `0000000000000000000000000000000000000`, δεν υπάρχει έργο στο οποίο εμφανίζεται ο Romeo αλλά όχι η Juliet.
+
+![](./_img/ipynb-32.png) [_Μία_ λύση](./notebooks/term-document-matrix.ipynb).
