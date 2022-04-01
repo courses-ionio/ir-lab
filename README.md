@@ -198,3 +198,5 @@ with open(filename) as file:
 ![Παραδειγμα `not` αναζήτησης](https://miro.medium.com/max/1000/1*JTy04p8qn7hBJHxzua7_TQ.gif)
 
 <small style="font-size:6pt">Πηγή εικόνων: https://medium.com/@shahikhashayar/and-or-and-not-boolean-queries-on-inverted-indexes-in-python-8030bb5d9098</small>
+
+![](./_img/ipynb-32.png) [_Μία_ λύση](./notebooks/inverted-index.ipynb).
