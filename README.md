@@ -200,3 +200,63 @@ with open(filename) as file:
 <small style="font-size:6pt">Πηγή εικόνων: https://medium.com/@shahikhashayar/and-or-and-not-boolean-queries-on-inverted-indexes-in-python-8030bb5d9098</small>
 
 ![](./_img/ipynb-32.png) [_Μία_ λύση](./notebooks/inverted-index.ipynb).
+
+---
+
+### Text Preprocessing (python)
+
+Θα αξιοποιήσουμε το jupyter lab και τα κείμενα των έργων του Shakespeare από το εργαστήριο της πρώτης εβδομάδας.
+
+Μερικές βασικές τεχνικές preprocessing περιλαμβάνουν:
+* Μετατροπή σε _όλα πεζά_
+* Εκκαθάριση από _extra whitespaces_
+* Tokenization
+* Απαλοιφή σημείων στίξης
+* Απαλοιφή συνηθισμένων _stopwords_
+* Stemming<sup>*</sup>
+    * _"Stemming usually refers to a crude heuristic process that chops off the ends of words"_
+* Lemmatization<sup>*</sup>
+    * _"Lemmatization considers the context and converts the word to its meaningful base form"_ απαιτεί αναγνώριση part of speech tag.
+
+Δείτε https://nlp.stanford.edu/IR-book/html/htmledition/stemming-and-lemmatization-1.html
+
+Δημιουργήστε μια function για κάθε στειχειώδη λειτουργία preprocessing.
+Για πολλές από τις λειτουργίες αξιοποιήστε τη βιβλιοθήκη https://www.nltk.org/.
+
+* Η βιβλιοθήκη nltk περιέχει μια λίστα stopwords για διάφορες λέξεις, δείτε τις αγγλικές:
+```
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+print(stopwords.words('english'))
+```
+Output:
+```
+['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"]
+```
+
+
+* Η βιβλιοθήκη nltk περιέχει διάφορους stemmers, όπως ο PorterStemmer
+```
+from nltk.stem import PorterStemmer
+porter = PorterStemmer()
+porter.stem('delivered')
+```
+Output:
+```
+'deliv'
+```
+
+* Η βιβλιοθήκη nltk περιέχει διάφορους lemmatizers, όπως ο WordNetLemmatizer. Το αποτέλεσμα του lemmatization εξαρτάται πολλές φορές από το τι είναι η λέξη (ρήμα, ουσιστικό), πχ:
+```
+lemmatizer = WordNetLemmatizer()
+print(lemmatizer.lemmatize("stripes", 'v')) #verb
+print(lemmatizer.lemmatize("stripes", 'n')) #noun
+```
+Output:
+```
+strip
+stripe
+```
+
+**Δημιουργήστε πάλι το inverted index των έργων του Shakespeare μετά από την εφαρμογή text preprocessing (σημ.: επιλέξτε μι ααπό τις τεχνικές stemming ή lemmatization)**
