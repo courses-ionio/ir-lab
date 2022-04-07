@@ -259,4 +259,4 @@ strip
 stripe
 ```
 
-**Δημιουργήστε πάλι το inverted index των έργων του Shakespeare μετά από την εφαρμογή text preprocessing (σημ.: επιλέξτε μι ααπό τις τεχνικές stemming ή lemmatization)**
+**Δημιουργήστε πάλι το inverted index των έργων του Shakespeare μετά από την εφαρμογή text preprocessing (σημ.: επιλέξτε μια από τις τεχνικές stemming ή lemmatization)**
