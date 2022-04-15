@@ -260,3 +260,5 @@ stripe
 ```
 
 **Δημιουργήστε πάλι το inverted index των έργων του Shakespeare μετά από την εφαρμογή text preprocessing (σημ.: επιλέξτε μια από τις τεχνικές stemming ή lemmatization)**
+
+![](./_img/ipynb-32.png) [_Μία_ λύση](./notebooks/text-preprocessing.ipynb).
